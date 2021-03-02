@@ -99,7 +99,7 @@ function fileExamples() {
 
     println("Absolute path of ", finalFile, "is", fsAbs(finalFile))
 
-    println(JSON.stringify(fsItemInfo("examples")))
+    println(JSON.stringify(fsItemInfo("_examples")))
 
     println(JSON.stringify(fsItemInfo("_examples/script.sh")))
 }
@@ -155,12 +155,12 @@ function testSecrets() {
 }
 
 function main() {
-    // localScripts()
-    // remoteCommands()
-    // fileExamples()
-    // zipExample()
-    // hashExample()
-    // testREST()
-    // testSecrets()
+    localScripts()
+    remoteCommands()
+    fileExamples()
+    zipExample()
+    hashExample()
+    testREST()
+    testSecrets()
     
 }

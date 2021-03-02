@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/banai-ci/banai/infra"
-	"github.com/go-git/go-git/plumbing/transport/http"
-	"github.com/go-git/go-git/plumbing/transport/ssh"
 	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 )
 
 var banai *infra.Banai
@@ -68,7 +68,7 @@ func gitClone(originURL string, targetFolder string, cloneOpt ...GitCloneOptions
 				err = cloneUserPassword(originURL, targetFolder, up.User, up.Password)
 			case infra.SecretTypeSSH:
 				sshInfo := si.(infra.SSHWithPrivate)
-				err = cloneWithSSH(originURL, targetFolder, sshInfo.User, sshInfo.PrivatekeyFile, sshInfo.Passfrase)
+				err = cloneWithSSH(originURL, targetFolder, sshInfo.PrivatekeyFile, sshInfo.Passfrase)
 			} //switch
 
 		}
