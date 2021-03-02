@@ -1,0 +1,8 @@
+workspace/
+server/__debug_bin
+server/banai-server
+server/server
+banai
+dump/
+dump-out/
+go.sum

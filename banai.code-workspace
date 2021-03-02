@@ -1,0 +1,29 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Run main",
+				"type": "go",
+				"request": "launch",
+				"mode": "debug",
+				"program": "${workspaceFolder}",
+				"args": ["-f","examples/Banaifile.js","-s","examples/secret-file.json"]
+			},
+			{
+				"name": "Run func",
+				"type": "go",
+				"request": "launch",
+				"mode": "debug",
+				"program": "${workspaceFolder}",
+				"args": ["-f","examples/Banaifile.js","printOut"]
+			}
+		]
+	}
+}
