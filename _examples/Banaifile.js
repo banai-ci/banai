@@ -19,7 +19,7 @@ function localScripts() {
         println(lines[s])
     }
 
-    res = shScript("examples/script.sh")
+    res = shScript("_examples/script.sh")
     var lines = res.out.split("\n")
     for (var s = 0; s < lines.length; s++) {
         println(lines[s])
@@ -55,7 +55,7 @@ function remoteCommands() {
         privateKeyFile: '/home/sagi/.ssh/foodsager.pem'
     }
     println("copy file to remote")
-    shUpload(sshConf, "examples/Banaifile.js", "b.js")
+    shUpload(sshConf, "_examples/Banaifile.js", "b.js")
 
 
     println("Running ls on remote")
@@ -69,9 +69,9 @@ function remoteCommands() {
 function fileExamples() {
     var finalFile = "dump/my-text12.txt"
     fsRemove(finalFile)
-    var fileContentBin = fsRead("examples/script.sh")
+    var fileContentBin = fsRead("_examples/script.sh")
     println("Reading file:\n", fileContentBin)
-    var fileContentText = fsRead("examples/script.sh")
+    var fileContentText = fsRead("_examples/script.sh")
 
     fsWrite("dump/bin.txt", fileContentText)
 
@@ -101,7 +101,7 @@ function fileExamples() {
 
     println(JSON.stringify(fsItemInfo("examples")))
 
-    println(JSON.stringify(fsItemInfo("examples/script.sh")))
+    println(JSON.stringify(fsItemInfo("_examples/script.sh")))
 }
 
 function zipExample() {
@@ -118,11 +118,11 @@ function dockerExample() {
 }
 
 function hashExample() {
-    println("MD5 of banai file: ", hashMd5File('examples/Banaifile.js'))
+    println("MD5 of banai file: ", hashMd5File('_examples/Banaifile.js'))
     println("MD5 of text: ", hashMd5Text('line123'))
-    println("SHA1 of banai file: ", hashSha1File('examples/Banaifile.js'))
+    println("SHA1 of banai file: ", hashSha1File('_examples/Banaifile.js'))
     println("SHA1 of text: ", hashSha1Text('line123'))
-    println("SHA256 of banai file: ", hashSha256File('examples/Banaifile.js'))
+    println("SHA256 of banai file: ", hashSha256File('_examples/Banaifile.js'))
     println("SHA256 of text: ", hashSha256Text('line123'))
 }
 
@@ -136,7 +136,7 @@ function testREST() {
     println("Status ", res.status)
     println("Content=", res.body)
 
-    res = httpPostForm("https://ptsv2.com/t/dg1g3-1614349524/post", { "fld1": "sagi" }, { "file": "examples/script.sh" })
+    res = httpPostForm("https://ptsv2.com/t/dg1g3-1614349524/post", { "fld1": "sagi" }, { "file": "_examples/script.sh" })
     println("Status ", res.status)
     println("Content=", res.body)
 
@@ -155,11 +155,12 @@ function testSecrets() {
 }
 
 function main() {
-    localScripts()
-    remoteCommands()
-    fileExamples()
-    zipExample()
-    hashExample()
-    testREST()
-    testSecrets()
+    // localScripts()
+    // remoteCommands()
+    // fileExamples()
+    // zipExample()
+    // hashExample()
+    // testREST()
+    // testSecrets()
+    
 }

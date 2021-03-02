@@ -9,6 +9,7 @@ import (
 
 	"github.com/banai-ci/banai/commands/archive"
 	"github.com/banai-ci/banai/commands/fs"
+	"github.com/banai-ci/banai/commands/gitclient"
 	hashImpl "github.com/banai-ci/banai/commands/hash"
 	"github.com/banai-ci/banai/commands/httpclient"
 	secret "github.com/banai-ci/banai/commands/secrets"
@@ -127,6 +128,7 @@ func runBuild(scriptFileName string, funcCalls []string, secretsFile string) (do
 		hashImpl.RegisterJSObjects(b)
 		httpclient.RegisterJSObjects(b)
 		secret.RegisterJSObjects(b)
+		gitclient.RegisterJSObjects(b)
 
 		_, err = b.Jse.RunProgram(program)
 
@@ -169,8 +171,8 @@ func main() {
 	flag.StringVar(&scriptFileName, "f", defaultScriptFileName, "Set script to run. Default is Banaifile")
 	flag.StringVar(&scriptFileName, "file", defaultScriptFileName, "Set script to run. Default is Banaifile")
 	flag.BoolVar(&isAgent, "agent", false, "true if banai is run as agent")
-	flag.StringVar(&secretsFile, "s", "", "A secrets file. See examples/secret-file.json")
-	flag.StringVar(&secretsFile, "secrets", "", "A secrets file. See examples/secret-file.json")
+	flag.StringVar(&secretsFile, "s", "", "A secrets file. See _examples/secret-file.json")
+	flag.StringVar(&secretsFile, "secrets", "", "A secrets file. See _examples/secret-file.json")
 	flag.Parse()
 
 	funcCalls = flag.Args()

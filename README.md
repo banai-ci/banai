@@ -13,17 +13,17 @@ banai -f somefile.js
 ```
 
 By default banai runs the main function inside the banai file. You can change that by naming a function in banaifile. 
-For example. At `examples/Banaifile.js` we have a method called: `printOut` To call it directly from cli use:
+For example. At `_examples/Banaifile.js` we have a method called: `printOut` To call it directly from cli use:
 ```
-banai -f examples/Banaifile.js printOut
+banai -f _examples/Banaifile.js printOut
 ```
 
-You can see more example in banai at: `examples/Banaifile.js`
+You can see more example in banai at: `_examples/Banaifile.js`
 
 
 You can set secrets to the banai by the `-s ` flag, for example:
 ```
-  banai -s examples/secret-file.json
+  banai -s _examples/secret-file.json
 ```
 For more information look at: [Working with secret configuration](#Secrets-configuration)
 
