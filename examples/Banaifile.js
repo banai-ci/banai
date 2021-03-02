@@ -55,7 +55,7 @@ function remoteCommands() {
         privateKeyFile: '/home/sagi/.ssh/foodsager.pem'
     }
     println("copy file to remote")
-    shUpload(sshConf, "examples/testfile.js", "b.js")
+    shUpload(sshConf, "examples/Banaifile.js", "b.js")
 
 
     println("Running ls on remote")
@@ -118,11 +118,11 @@ function dockerExample() {
 }
 
 function hashExample() {
-    println("MD5 of banai file: ", hashMd5File('examples/testfile.js'))
+    println("MD5 of banai file: ", hashMd5File('examples/Banaifile.js'))
     println("MD5 of text: ", hashMd5Text('line123'))
-    println("SHA1 of banai file: ", hashSha1File('examples/testfile.js'))
+    println("SHA1 of banai file: ", hashSha1File('examples/Banaifile.js'))
     println("SHA1 of text: ", hashSha1Text('line123'))
-    println("SHA256 of banai file: ", hashSha256File('examples/testfile.js'))
+    println("SHA256 of banai file: ", hashSha256File('examples/Banaifile.js'))
     println("SHA256 of text: ", hashSha256Text('line123'))
 }
 
@@ -155,11 +155,11 @@ function testSecrets() {
 }
 
 function main() {
-    // localScripts()
-    // remoteCommands()
-    // fileExamples()
-    // zipExample()
-    // hashExample()
-    // testREST()
-    // testSecrets()
+    localScripts()
+    remoteCommands()
+    fileExamples()
+    zipExample()
+    hashExample()
+    testREST()
+    testSecrets()
 }
