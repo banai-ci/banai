@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/banai-ci/banai/utils/fsutils"
 	"github.com/dop251/goja"
@@ -16,6 +17,64 @@ import (
 //ErrSecretNotFound return when the secret was not found in secret manager
 var ErrSecretNotFound = errors.New("Secret not found")
 
+//ErrScriptAbort Called when script used abort command to terminate execution
+var ErrScriptAbort = errors.New("Script Aborted")
+
+//ErrScriptDone Called when script uses done to signal that execution is done
+var ErrScriptDone = errors.New("Script Done")
+
+//GenerateBanaiResult create a result object
+func GenerateBanaiResult(complete bool, err error, params map[string]string, resultObject interface{}) BanaiResult {
+	ret := BanaiResult{
+		Complete: complete,
+	}
+
+	if err != nil {
+		ret.ErrorMessage = fmt.Sprint(err)
+	}
+	var eqIdx int
+	ret.Env = make(map[string]string)
+
+	//extract environment varaibles
+	for _, env := range os.Environ() {
+		env = strings.TrimSpace(env)
+		eqIdx = strings.Index(env, "=")
+		if eqIdx < 0 {
+			ret.Env[env] = ""
+		} else {
+			ret.Env[env[:eqIdx]] = env[eqIdx+1:]
+		}
+	} //for
+
+	ret.Params = make(map[string]string)
+	if params != nil {
+		for k, v := range params {
+			ret.Params[k] = v
+		}
+	}
+	ret.Result = resultObject
+
+	return ret
+}
+
+//GlobalExecutionResultObjectName The name of the Javascript Global object that holds the Result field of BanaiResult
+const GlobalExecutionResultObjectName = "banaiResult"
+
+//BanaiParams are passed to banai on creation
+type BanaiParams map[string]string
+
+//BanaiResult is a return object of banai. This value is set by the shell commands: done or exit
+//If the user does not call done or exit explicitrly than this object is created by the Banai object in the following way:
+//If execution done with no errors, BanaiResult.Complete is true and BanaiResult.Result is nil.
+//If exceution interrupted with call to exit. BanaiResult.Comlete is false, ErrorMessage will be filled by the exception text. result is nil
+type BanaiResult struct {
+	Complete     bool              `json:"complete,omitempty"`     //true if the execution ended normaly
+	ErrorMessage string            `json:"errorMessage,omitempty"` //In case of exception, this will hold the string of the error
+	Env          map[string]string `json:"env,omitempty"`          //A map of key values filled by the environment variables used when running the banai.
+	Params       BanaiParams       `json:"params,omitempty"`       //The parameters Banai was started, This is done by using --param flag
+	Result       interface{}       `json:"result,omitempty"`       //An object that returned by the user. This value is filled when
+}
+
 //Banai banai main struct
 type Banai struct {
 	Jse          *goja.Runtime
@@ -23,12 +82,12 @@ type Banai struct {
 	Logger       *logrus.Logger
 	stashFolder  string
 	secretFolder string
-
-	secrets map[string]secretStruct
+	secrets      map[string]secretStruct
+	Result       BanaiResult
 }
 
 //NewBanai create new banai struct object
-func NewBanai() *Banai {
+func NewBanai(params BanaiParams) *Banai {
 	ret := &Banai{
 		Jse:     goja.New(),
 		Logger:  logrus.New(),
@@ -42,6 +101,8 @@ func NewBanai() *Banai {
 	os.MkdirAll(ret.stashFolder, 0700)
 	os.RemoveAll(ret.secretFolder)
 	os.MkdirAll(ret.secretFolder, 0700)
+
+	ret.Result = GenerateBanaiResult(false, nil, params, nil)
 
 	return ret
 }

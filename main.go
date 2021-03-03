@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/banai-ci/banai/commands/archive"
 	"github.com/banai-ci/banai/commands/fs"
@@ -87,12 +88,12 @@ func loadSecrets(secretsFile string, b *infra.Banai) (err error) {
 	return
 }
 
-func runBuild(scriptFileName string, funcCalls []string, secretsFile string) (done chan goja.Value, abort chan bool, startErr error) {
+func runBuild(scriptFileName string, param infra.BanaiParams, funcCalls []string, secretsFile string) (done chan infra.BanaiResult, abort chan bool, startErr error) {
 	abort = make(chan bool)
-	done = make(chan goja.Value)
+	done = make(chan infra.BanaiResult)
 
-	var b = infra.NewBanai()
-	var runReturnedValue goja.Value
+	var b = infra.NewBanai(param)
+	var runReturnedValue infra.BanaiResult
 	b.PanicOnError(loadSecrets(secretsFile, b))
 	//--------- go routin for reporting log out an
 	go func() {
@@ -101,6 +102,8 @@ func runBuild(scriptFileName string, funcCalls []string, secretsFile string) (do
 				b.Logger.Error(err)
 				b.Logger.Error("Script execution exit with error !!!!!")
 			}
+			userResult := b.Jse.Get(infra.GlobalExecutionResultObjectName)
+			runReturnedValue = infra.GenerateBanaiResult(true, nil, b.Result.Params, userResult)
 			b.Close()
 			done <- runReturnedValue
 
@@ -108,7 +111,9 @@ func runBuild(scriptFileName string, funcCalls []string, secretsFile string) (do
 
 		go func() {
 			<-abort
-			b.Jse.Interrupt("Abort execution")
+			err := fmt.Errorf("Abort execution")
+
+			b.Jse.Interrupt(err)
 		}()
 		if scriptFileName == defaultScriptFileName {
 			_, err := os.Stat(scriptFileName)
@@ -118,7 +123,7 @@ func runBuild(scriptFileName string, funcCalls []string, secretsFile string) (do
 		}
 		program, err := goja.Compile(scriptFileName, loadScript(scriptFileName), false)
 		if err != nil {
-
+			runReturnedValue = infra.GenerateBanaiResult(false, err, b.Result.Params, nil)
 			panic(fmt.Sprintln("Failed to compile script ", scriptFileName, err))
 		}
 
@@ -133,7 +138,7 @@ func runBuild(scriptFileName string, funcCalls []string, secretsFile string) (do
 		_, err = b.Jse.RunProgram(program)
 
 		if err != nil {
-			runReturnedValue = b.Jse.ToValue(fmt.Errorf("Failed to run program %s", err))
+			runReturnedValue = infra.GenerateBanaiResult(false, err, b.Result.Params, nil)
 			return
 		}
 
@@ -146,12 +151,13 @@ func runBuild(scriptFileName string, funcCalls []string, secretsFile string) (do
 		for _, fn := range funcNames {
 			_, ok := goja.AssertFunction(b.Jse.Get(fn))
 			if !ok {
-				b.Logger.Panic(fmt.Errorf("function %s not found", fn))
+				err := fmt.Errorf("function %s not found", fn)
+				b.Logger.Panic(err)
 			}
 			_, err = b.Jse.RunString(fmt.Sprintf("%s()", fn))
 			if jserr, ok := err.(*goja.Exception); ok {
-				b.Logger.Error("Failure at execution ", jserr)
-				runReturnedValue = b.Jse.ToValue(jserr)
+				err := fmt.Errorf("Failure at execution %s", jserr)
+				b.Logger.Panic(err)
 				break
 			}
 
@@ -161,31 +167,56 @@ func runBuild(scriptFileName string, funcCalls []string, secretsFile string) (do
 	return
 }
 
+type multiVal map[string]string
+
+func (m multiVal) String() string {
+	params := make([]string, 0)
+	for k, v := range m {
+		params = append(params, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(params, ",")
+}
+func (m *multiVal) Set(p string) error {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return nil
+	}
+	eqIdx := strings.Index(p, "=")
+	if eqIdx < 0 {
+		(*m)[p] = ""
+	} else {
+		(*m)[p[:eqIdx]] = p[eqIdx+1:]
+	}
+	return nil
+}
+
 func main() {
 
 	var scriptFileName = defaultScriptFileName
 	var funcCalls []string
 	var isAgent bool
 	var secretsFile string
+	var params multiVal
 
 	flag.StringVar(&scriptFileName, "f", defaultScriptFileName, "Set script to run. Default is Banaifile")
 	flag.StringVar(&scriptFileName, "file", defaultScriptFileName, "Set script to run. Default is Banaifile")
 	flag.BoolVar(&isAgent, "agent", false, "true if banai is run as agent")
 	flag.StringVar(&secretsFile, "s", "", "A secrets file. See _examples/secret-file.json")
 	flag.StringVar(&secretsFile, "secrets", "", "A secrets file. See _examples/secret-file.json")
+	flag.Var(&params, "param", "Pass params to the banai. A param value is in the form of name=value. The parameter can be passed many time")
 	flag.Parse()
 
 	funcCalls = flag.Args()
 
 	//----------- converting
 	if !isAgent {
-		doneCH, _, _ := runBuild(scriptFileName, funcCalls, secretsFile)
+		doneCH, _, _ := runBuild(scriptFileName, infra.BanaiParams(params), funcCalls, secretsFile)
 
 		exitValue := <-doneCH
-		if exitValue != nil {
-			fmt.Println("Exit running Banaifile", scriptFileName, " Last result was ", exitValue)
+		if !exitValue.Complete {
+			fmt.Println("Exit running Banaifile", scriptFileName, " with error !!!\n%s ", exitValue.ErrorMessage)
 		} else {
-			fmt.Println("Exit running Banaifile", scriptFileName)
+			fmt.Println("Done running Banaifile", scriptFileName)
 		}
 
 	}
