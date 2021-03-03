@@ -18,10 +18,10 @@ import (
 var ErrSecretNotFound = errors.New("Secret not found")
 
 //ErrScriptAbort Called when script used abort command to terminate execution
-var ErrScriptAbort = errors.New("Script Aborted")
+var ErrScriptAbort = errors.New("Banai Script Aborted")
 
 //ErrScriptDone Called when script uses done to signal that execution is done
-var ErrScriptDone = errors.New("Script Done")
+var ErrScriptDone = errors.New("Banai Script Done")
 
 //GenerateBanaiResult create a result object
 func GenerateBanaiResult(complete bool, err error, params map[string]string, resultObject interface{}) BanaiResult {

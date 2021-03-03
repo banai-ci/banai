@@ -154,13 +154,21 @@ function testSecrets() {
 
 }
 
+function causeException(){
+    throw "Testing exception from banai script"
+}
+
 function main() {
-    localScripts()
-    remoteCommands()
-    fileExamples()
-    zipExample()
-    hashExample()
-    testREST()
-    testSecrets()
+    //localScripts()
+    //remoteCommands()
+    // fileExamples()
+    // zipExample()
+    // hashExample()
+    // testREST()
+    // testSecrets()
+    //causeException()
+    println("After cause exception")
+    //abort()
+    done()
     
 }

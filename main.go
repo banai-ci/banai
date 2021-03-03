@@ -99,11 +99,24 @@ func runBuild(scriptFileName string, param infra.BanaiParams, funcCalls []string
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				b.Logger.Error(err)
-				b.Logger.Error("Script execution exit with error !!!!!")
+				switch err {
+				case infra.ErrScriptDone:
+					userResult := b.Jse.Get(infra.GlobalExecutionResultObjectName)
+					runReturnedValue = infra.GenerateBanaiResult(true, nil, b.Result.Params, userResult)
+				case infra.ErrScriptAbort:
+					userResult := b.Jse.Get(infra.GlobalExecutionResultObjectName)
+					runReturnedValue = infra.GenerateBanaiResult(false, fmt.Errorf("Script called abort"), b.Result.Params, userResult)
+					b.Logger.Error("Script execution aborted !!!!!")
+				default:
+					runReturnedValue = infra.GenerateBanaiResult(false, fmt.Errorf("%s", err), b.Result.Params, nil)
+					b.Logger.Error("Script execution exit due to Exception !!!!!")
+				}
+
+			} else {
+				userResult := b.Jse.Get(infra.GlobalExecutionResultObjectName)
+				runReturnedValue = infra.GenerateBanaiResult(true, nil, b.Result.Params, userResult)
 			}
-			userResult := b.Jse.Get(infra.GlobalExecutionResultObjectName)
-			runReturnedValue = infra.GenerateBanaiResult(true, nil, b.Result.Params, userResult)
+
 			b.Close()
 			done <- runReturnedValue
 
@@ -154,13 +167,24 @@ func runBuild(scriptFileName string, param infra.BanaiParams, funcCalls []string
 				err := fmt.Errorf("function %s not found", fn)
 				b.Logger.Panic(err)
 			}
+
 			_, err = b.Jse.RunString(fmt.Sprintf("%s()", fn))
 			if jserr, ok := err.(*goja.Exception); ok {
-				err := fmt.Errorf("Failure at execution %s", jserr)
-				b.Logger.Panic(err)
+				b.Logger.Panic(jserr)
 				break
 			}
 
+			if interr, ok := err.(*goja.InterruptedError); ok {
+				interruptString := fmt.Sprint(interr.Value())
+				switch interruptString {
+				case infra.ErrScriptAbort.Error():
+					panic(infra.ErrScriptAbort)
+				case infra.ErrScriptDone.Error():
+					panic(infra.ErrScriptDone)
+				default:
+					panic(err)
+				}
+			}
 		}
 
 	}()
@@ -214,9 +238,9 @@ func main() {
 
 		exitValue := <-doneCH
 		if !exitValue.Complete {
-			fmt.Println("Exit running Banaifile", scriptFileName, " with error !!!\n%s ", exitValue.ErrorMessage)
+			fmt.Println("Exit running Banaifile", scriptFileName, " with error !!!", exitValue.ErrorMessage)
 		} else {
-			fmt.Println("Done running Banaifile", scriptFileName)
+			fmt.Println("Done running Banaifile script ", scriptFileName)
 		}
 
 	}

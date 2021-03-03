@@ -217,7 +217,7 @@ func abortExecution(returnObject interface{}) {
 	banai.Jse.Interrupt(infra.ErrScriptAbort)
 }
 
-func done(returnObject interface{}) {
+func userDone(returnObject interface{}) {
 	if returnObject != nil {
 		banai.Jse.GlobalObject().Set(infra.GlobalExecutionResultObjectName, banai.Jse.ToValue(returnObject))
 	}
@@ -240,4 +240,5 @@ func RegisterJSObjects(b *infra.Banai) {
 	banai.Jse.GlobalObject().Set("print", print)
 	banai.Jse.GlobalObject().Set("println", println)
 	banai.Jse.GlobalObject().Set("abort", abortExecution)
+	banai.Jse.GlobalObject().Set("done", userDone)
 }
