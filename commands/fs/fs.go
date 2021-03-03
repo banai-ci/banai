@@ -280,6 +280,14 @@ func fsItemInfo(itemPath string) fileInfo {
 	return ret
 }
 
+func fsHas(fileSystemItemPath string) bool {
+	_, err := os.Stat(fileSystemItemPath)
+	if err == nil || !os.IsNotExist(err) {
+		return true
+	}
+	return false
+}
+
 //RegisterJSObjects registers fs objects and functions
 func RegisterJSObjects(b *infra.Banai) {
 	banai = b
@@ -298,5 +306,6 @@ func RegisterJSObjects(b *infra.Banai) {
 	banai.Jse.GlobalObject().Set("fsPwd", currentPath)
 	banai.Jse.GlobalObject().Set("fsChdir", changeDir)
 	banai.Jse.GlobalObject().Set("fsItemInfo", fsItemInfo)
+	banai.Jse.GlobalObject().Set("fsHas", fsHas)
 
 }

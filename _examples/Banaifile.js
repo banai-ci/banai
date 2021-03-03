@@ -99,6 +99,8 @@ function fileExamples() {
 
     println("Absolute path of ", finalFile, "is", fsAbs(finalFile))
 
+    println("_example Exists: ",fsHas("_examples"))
+
     println(JSON.stringify(fsItemInfo("_examples")))
 
     println(JSON.stringify(fsItemInfo("_examples/script.sh")))
@@ -166,12 +168,9 @@ function testGit() {
         "password": ""
     }
     var targetFolder="dump/web-api"
-    try{
-        if (fsItemInfo(targetFolder).isDir){
-            fsRemoveDir(targetFolder)
-        }
-    }catch(ex){
-
+    
+    if (fsHas(targetFolder)){
+        fsRemoveDir(targetFolder)
     }
     gitClone("bitbucket.org:sextillionio/web-api.git",targetFolder , opt)
 }
