@@ -86,6 +86,20 @@ type Banai struct {
 	Result       BanaiResult
 }
 
+func (b *Banai) abortExecution(returnObject interface{}) {
+	if returnObject != nil {
+		b.Jse.GlobalObject().Set(GlobalExecutionResultObjectName, b.Jse.ToValue(returnObject))
+	}
+	b.Jse.Interrupt(ErrScriptAbort)
+}
+
+func (b *Banai) doneExecution(returnObject interface{}) {
+	if returnObject != nil {
+		b.Jse.GlobalObject().Set(GlobalExecutionResultObjectName, b.Jse.ToValue(returnObject))
+	}
+	b.Jse.Interrupt(ErrScriptDone)
+}
+
 //NewBanai create new banai struct object
 func NewBanai(params BanaiParams) *Banai {
 	ret := &Banai{
@@ -101,6 +115,9 @@ func NewBanai(params BanaiParams) *Banai {
 	os.MkdirAll(ret.stashFolder, 0700)
 	os.RemoveAll(ret.secretFolder)
 	os.MkdirAll(ret.secretFolder, 0700)
+
+	ret.Jse.GlobalObject().Set("abort", ret.abortExecution)
+	ret.Jse.GlobalObject().Set("done", ret.doneExecution)
 
 	ret.Result = GenerateBanaiResult(false, nil, params, nil)
 

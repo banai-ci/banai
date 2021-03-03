@@ -32,6 +32,40 @@ For more information look at: [Working with secret configuration](#Secrets-confi
 
 All banai commands are organized into groups. In most cases the name of the function starts with the initions of the group follow by the function anme
 
+## Global
+
+A call to banai returns a result to the stdout in a json form of:
+```javascript
+  complete:     true,           //true if script had comleted its execution, or false in case of an exception or calling to abort method (see below)
+	errorMessage: "Some error message is any", //Some error message if any
+	env:         {"name":"val"},              // Banai environement variables after the execution  
+	params:       {"name":"val"},              // The parameters of banai, when it was called             
+	result:       object,             //Some simple value or object that was returned by the script when called to done or abort function
+```
+
+There are two global functions for stopping the execution of a Banai script, done and abort
+
+### done
+A way to stop a running script immidiately. Calling this method will set the complete value of the result as __true__
+
+#### Synopsis
+ done(resturnObject)
+
+returnObject is a simple value or simple object that will be set in the execution 'result' field
+
+---
+
+### abort
+A way to abort a running script immidiately. Calling this method will set the complete value of the result as __false__
+
+#### Synopsis
+ abort(resturnObject)
+
+returnObject is a simple value or simple object that will be set in the execution 'result' field
+
+---
+
+
 ## Archiving
 
 ### arZip

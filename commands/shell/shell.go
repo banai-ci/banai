@@ -210,20 +210,6 @@ func println(text ...interface{}) {
 	fmt.Println(text...)
 }
 
-func abortExecution(returnObject interface{}) {
-	if returnObject != nil {
-		banai.Jse.GlobalObject().Set(infra.GlobalExecutionResultObjectName, banai.Jse.ToValue(returnObject))
-	}
-	banai.Jse.Interrupt(infra.ErrScriptAbort)
-}
-
-func userDone(returnObject interface{}) {
-	if returnObject != nil {
-		banai.Jse.GlobalObject().Set(infra.GlobalExecutionResultObjectName, banai.Jse.ToValue(returnObject))
-	}
-	banai.Jse.Interrupt(infra.ErrScriptDone)
-}
-
 //RegisterJSObjects registers Shell objects and functions
 func RegisterJSObjects(b *infra.Banai) {
 	banai = b
@@ -239,6 +225,5 @@ func RegisterJSObjects(b *infra.Banai) {
 	banai.Jse.GlobalObject().Set("shDownload", sshDownloadFile)
 	banai.Jse.GlobalObject().Set("print", print)
 	banai.Jse.GlobalObject().Set("println", println)
-	banai.Jse.GlobalObject().Set("abort", abortExecution)
-	banai.Jse.GlobalObject().Set("done", userDone)
+
 }
