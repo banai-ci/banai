@@ -38,10 +38,10 @@ A call to banai returns a result to the stdout in a json form of:
 ```javascript
 {
   complete:     true,                         //true if script had comleted its execution, false if script was interrupted
-	errorMessage: "Some error message is any", //Some error message if any
+  errorMessage: "Some error message is any", //Some error message if any
 	env:         {"name":"val"},              // Banai environement variables after the execution  
 	params:       {"name":"val"},              // The parameters of banai, when it was called             
-	result:       object                      //Some simple value or object that was returned by the script when called to done or abort function
+	result:       ""                      //Some simple value or object that was returned by the script when called to done or abort function
 }
 ```
 
