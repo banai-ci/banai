@@ -54,7 +54,7 @@ func createAuthTransportFromBanaiSecretID(secretID string) (ret transport.AuthMe
 			ret = createAuthTransportFromUserPassword(up.User, up.Password)
 		case infra.SecretTypeSSH:
 			sshInfo := si.(infra.SSHWithPrivate)
-			ret, err = createAuthTransportFromSSH(sshInfo.PrivatekeyFile, sshInfo.Passfrase)
+			ret, err = createAuthTransportFromSSH(sshInfo.PrivateKeyFile, sshInfo.Passphrase)
 		} //switch
 	}
 	err = fmt.Errorf("Secret Not Found")

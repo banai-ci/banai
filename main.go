@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -36,64 +35,12 @@ func loadScript(fileName string) string {
 	return string(b)
 }
 
-func loadSecrets(secretsFile string, b *infra.Banai) (err error) {
-	if secretsFile == "" {
-		return nil
-	}
-	var fileContent []byte
-	fileContent, err = ioutil.ReadFile(secretsFile)
-	if err != nil {
-		return
-	}
-
-	var secretsRootItem map[string]interface{}
-	err = json.Unmarshal(fileContent, &secretsRootItem)
-	if err != nil {
-		return
-	}
-
-	var intr interface{}
-	var ok bool
-	if intr, ok = secretsRootItem["secrets"]; !ok {
-		return
-	}
-
-	var secretObjectInter map[string]interface{}
-	secretsInterfaces := intr.([]interface{})
-	var secretTypeInter interface{}
-	var secretType string
-
-	for _, secretInterface := range secretsInterfaces {
-		secretObjectInter = secretInterface.(map[string]interface{})
-		secretTypeInter, ok = secretObjectInter["type"]
-		secretType = secretTypeInter.(string)
-		if ok {
-			switch secretType {
-			case "text":
-				b.AddStringSecret(secretObjectInter["id"].(string), secretObjectInter["text"].(string))
-			case "ssh":
-				b.AddSSHWithPrivate(secretObjectInter["id"].(string),
-					secretObjectInter["user"].(string),
-					secretObjectInter["privateKey"].(string),
-					secretObjectInter["passphrase"].(string))
-			case "userpass":
-				b.AddUserPassword(secretObjectInter["id"].(string),
-					secretObjectInter["user"].(string),
-					secretObjectInter["password"].(string))
-			}
-		}
-	}
-
-	return
-}
-
 func runBuild(scriptFileName string, params infra.BanaiParams, funcCalls []string, secretsFile string) (done chan infra.BanaiResult, abort chan bool, startErr error) {
 	abort = make(chan bool)
 	done = make(chan infra.BanaiResult)
-
-	var b = infra.NewBanai(params)
+	var b *infra.Banai
+	b, startErr = infra.NewBanai(params, secretsFile)
 	var runReturnedValue infra.BanaiResult
-	b.PanicOnError(loadSecrets(secretsFile, b))
 
 	b.Logger.Info(fmt.Sprintf("Created banai with paramets: %v", params))
 

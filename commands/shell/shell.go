@@ -50,7 +50,7 @@ func callShell(cmd string, cmdOpt ...shellutils.CommandOptions) *shellutils.Shel
 				if opt.Env == nil {
 					opt.Env = make([]string, 0)
 				}
-				opt.Env = append(opt.Env, fmt.Sprintf(`GIT_SSH_COMMAND="ssh -i %s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"`, s.PrivatekeyFile))
+				opt.Env = append(opt.Env, fmt.Sprintf(`GIT_SSH_COMMAND="ssh -i %s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"`, s.PrivateKeyFile))
 
 			}
 
@@ -74,19 +74,19 @@ func shell(cmd string, cmdOpt ...shellutils.CommandOptions) *shellutils.ShellRes
 	return callShell(cmd, cmdOpt...)
 }
 
-func updateSSHConfigBySecret(b *infra.Banai, secretID string, sshConf *shellutils.ShellSSHConfig) {
+func fillSSHConfigBySecretID(b *infra.Banai, secretID string, sshConf *shellutils.ShellSSHConfig) {
 	if sshConf.SecretID != "" {
 		v, err := b.GetSecret(sshConf.SecretID)
 		if err != nil {
 			b.PanicOnError(err)
 		}
 		switch v.GetType() {
-		case "ssh":
+		case infra.SecretTypeSSH:
 			s := v.(infra.SSHWithPrivate)
-			sshConf.Passphrase = s.Passfrase
-			sshConf.PrivateKeyFile = s.PrivatekeyFile
+			sshConf.Passphrase = s.Passphrase
+			sshConf.PrivateKeyFile = s.PrivateKeyFile
 			sshConf.User = s.User
-		case "userpass":
+		case infra.SecretTypeUserPass:
 			s := v.(infra.UserPassword)
 			sshConf.User = s.User
 			sshConf.Password = s.Password
@@ -99,7 +99,7 @@ func updateSSHConfigBySecret(b *infra.Banai, secretID string, sshConf *shellutil
 func remoteshell(sshConf shellutils.ShellSSHConfig, cmd string) *shellutils.ShellResult {
 	var e error
 
-	updateSSHConfigBySecret(banai, sshConf.SecretID, &sshConf)
+	fillSSHConfigBySecretID(banai, sshConf.SecretID, &sshConf)
 
 	var ret *shellutils.ShellResult
 
@@ -111,7 +111,7 @@ func remoteshell(sshConf shellutils.ShellSSHConfig, cmd string) *shellutils.Shel
 func sshUploadFile(sshConf shellutils.ShellSSHConfig, localFile, remoteFile string) {
 	var e error
 
-	updateSSHConfigBySecret(banai, sshConf.SecretID, &sshConf)
+	fillSSHConfigBySecretID(banai, sshConf.SecretID, &sshConf)
 
 	if sshConf.Address == "" {
 		logger.Panic("sshConfig target host Address not set")
@@ -147,7 +147,7 @@ func sshUploadFile(sshConf shellutils.ShellSSHConfig, localFile, remoteFile stri
 func sshDownloadFile(sshConf shellutils.ShellSSHConfig, remoteFile string, localFile string) {
 	var e error
 
-	updateSSHConfigBySecret(banai, sshConf.SecretID, &sshConf)
+	fillSSHConfigBySecretID(banai, sshConf.SecretID, &sshConf)
 
 	if stat, e := os.Stat(remoteFile); e != nil {
 		logger.Panic("Failed to open local file", e)

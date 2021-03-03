@@ -165,9 +165,15 @@ function testGit() {
         "user": "",
         "password": ""
     }
+    var targetFolder="dump/web-api"
+    try{
+        if (fsItemInfo(targetFolder).isDir){
+            fsRemoveDir(targetFolder)
+        }
+    }catch(ex){
 
-
-    gitClone("bitbucket.org:sextillionio/web-api.git", "dump/web-api", opt)
+    }
+    gitClone("bitbucket.org:sextillionio/web-api.git",targetFolder , opt)
 }
 
 function main() {

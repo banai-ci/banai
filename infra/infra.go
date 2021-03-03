@@ -73,7 +73,7 @@ type Banai struct {
 	Logger       *logrus.Logger
 	stashFolder  string
 	secretFolder string
-	secrets      map[string]secretStruct
+	secrets      map[string]SecretInfo
 	Result       BanaiResult
 }
 
@@ -121,11 +121,11 @@ func (b *Banai) doneExecution(returnObject interface{}) {
 }
 
 //NewBanai create new banai struct object
-func NewBanai(params BanaiParams) *Banai {
+func NewBanai(params BanaiParams, secretFilePath string) (*Banai, error) {
 	ret := &Banai{
 		Jse:     goja.New(),
 		Logger:  logrus.New(),
-		secrets: make(map[string]secretStruct),
+		secrets: make(map[string]SecretInfo),
 	}
 	ret.Jse.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 	ret.TmpDir, _ = filepath.Abs("./.banai")
@@ -139,9 +139,17 @@ func NewBanai(params BanaiParams) *Banai {
 	ret.Jse.GlobalObject().Set("abort", ret.abortExecution)
 	ret.Jse.GlobalObject().Set("done", ret.doneExecution)
 
+	if secretFilePath != "" {
+		secrets, err := loadSecrestFromFile(secretFilePath)
+		if err != nil {
+			return nil, err
+		}
+		ret.secrets = secrets
+	}
+
 	ret.Result = GenerateBanaiResult(false, nil, params, nil)
 
-	return ret
+	return ret, nil
 }
 
 //PanicOnError return Value typed panic so javascript will get exception
@@ -204,33 +212,75 @@ func (b Banai) Load(stashID string) ([]byte, error) {
 
 //*********************************************************************************
 
-//AddStringSecret add secret string
-func (b Banai) AddStringSecret(secretID string, value string) {
-	b.secrets[secretID] = secretText{
-		Text: value,
+func loadSecrestFromFile(filePath string) (map[string]SecretInfo, error) {
+	ret := make(map[string]SecretInfo)
+	var rawSecrets map[string]map[string]interface{}
+
+	b, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
 	}
 
-}
+	json.Unmarshal(b, &rawSecrets)
 
-//AddSSHWithPrivate add secret string
-func (b Banai) AddSSHWithPrivate(secretID string, user string, privateKey string, passphrase string) {
-	b.secrets[secretID] = secretSSHWithPrivate{
-		User:       user,
-		PrivateKey: privateKey,
-		Passphrase: passphrase,
+	var ok bool
+	var secRawType string
+	var typeInterface interface{}
+	for secretID, secretInfo := range rawSecrets {
+		typeInterface, ok = secretInfo["type"]
+		if ok {
+			secRawType, ok = typeInterface.(string)
+			var valInter interface{}
+			if ok {
+				switch secRawType {
+				case SecretTypeText:
+
+					if valInter, ok = secretInfo["text"]; ok {
+						ts := TextSecret{}
+						ts.Text = valInter.(string)
+						ret[secretID] = ts
+					}
+
+				case SecretTypeSSH:
+					sshSec := SSHWithPrivate{}
+					if valInter, ok = secretInfo["user"]; ok {
+						sshSec.User = valInter.(string)
+					}
+					if valInter, ok = secretInfo["privateKeyFile"]; ok {
+						sshSec.PrivateKeyFile = valInter.(string)
+					}
+					if valInter, ok = secretInfo["passphrase"]; ok {
+						sshSec.Passphrase = valInter.(string)
+					}
+
+					ret[secretID] = sshSec
+				case SecretTypeUserPass:
+					upSec := UserPassword{}
+					if valInter, ok = secretInfo["user"]; ok {
+						upSec.User = valInter.(string)
+					}
+					if valInter, ok = secretInfo["password"]; ok {
+						upSec.Password = valInter.(string)
+					}
+					ret[secretID] = upSec
+				} //switch
+			}
+		}
 	}
 
-}
-
-//AddUserPassword secret of type user name password
-func (b Banai) AddUserPassword(secretID, user, password string) {
-	b.secrets[secretID] = secretUserPassword{
-		User:     user,
-		Password: password,
-	}
+	return ret, nil
 }
 
 //*********************************************************************************
+
+//SecretTypeText secret of type text
+const SecretTypeText = "text"
+
+//SecretTypeSSH secret of type ssh
+const SecretTypeSSH = "ssh"
+
+//SecretTypeUserPass secret of type username password
+const SecretTypeUserPass = "userpass"
 
 //SecretInfo Base interface of returned secrets
 type SecretInfo interface {
@@ -250,8 +300,8 @@ func (t TextSecret) GetType() string {
 //SSHWithPrivate info to use when using ssh with private key
 type SSHWithPrivate struct {
 	User           string `json:"user,omitempty"`
-	PrivatekeyFile string `json:"privateKeyFile,omitempty"`
-	Passfrase      string `json:"passfrase,omitempty"`
+	PrivateKeyFile string `json:"privateKeyFile,omitempty"`
+	Passphrase     string `json:"passphrase,omitempty"`
 }
 
 //GetType get secret info type
@@ -277,38 +327,7 @@ func (b Banai) GetSecret(secretID string) (SecretInfo, error) {
 		return nil, ErrSecretNotFound
 	}
 
-	var ret SecretInfo
-
-	switch v.GetType() {
-	case "text":
-		s := TextSecret{
-			Text: v.(secretText).Text,
-		}
-		ret = s
-	case "ssh":
-		i := v.(secretSSHWithPrivate)
-		fn := filepath.Join(b.secretFolder, secretID)
-		err := ioutil.WriteFile(fn, []byte(i.PrivateKey), 600)
-		if err != nil {
-			return nil, ErrSecretNotFound
-		}
-		s := SSHWithPrivate{
-			User:           v.(secretSSHWithPrivate).User,
-			PrivatekeyFile: fn,
-			Passfrase:      i.Passphrase,
-		}
-		ret = s
-	case "userpass":
-		i := v.(secretUserPassword)
-		s := UserPassword{
-			User:     i.User,
-			Password: i.Password,
-		}
-		ret = s
-	}
-
-	return ret, nil
-
+	return v, nil
 }
 
 //*********************************************************************************
