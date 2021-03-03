@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 
 	"github.com/banai-ci/banai/commands/archive"
 	"github.com/banai-ci/banai/commands/fs"
@@ -88,13 +87,16 @@ func loadSecrets(secretsFile string, b *infra.Banai) (err error) {
 	return
 }
 
-func runBuild(scriptFileName string, param infra.BanaiParams, funcCalls []string, secretsFile string) (done chan infra.BanaiResult, abort chan bool, startErr error) {
+func runBuild(scriptFileName string, params infra.BanaiParams, funcCalls []string, secretsFile string) (done chan infra.BanaiResult, abort chan bool, startErr error) {
 	abort = make(chan bool)
 	done = make(chan infra.BanaiResult)
 
-	var b = infra.NewBanai(param)
+	var b = infra.NewBanai(params)
 	var runReturnedValue infra.BanaiResult
 	b.PanicOnError(loadSecrets(secretsFile, b))
+
+	b.Logger.Info(fmt.Sprintf("Created banai with paramets: %v", params))
+
 	//--------- go routin for reporting log out an
 	go func() {
 		defer func() {
@@ -191,50 +193,35 @@ func runBuild(scriptFileName string, param infra.BanaiParams, funcCalls []string
 	return
 }
 
-type multiVal map[string]string
-
-func (m multiVal) String() string {
-	params := make([]string, 0)
-	for k, v := range m {
-		params = append(params, fmt.Sprintf("%s=%s", k, v))
-	}
-	return strings.Join(params, ",")
-}
-func (m *multiVal) Set(p string) error {
-	p = strings.TrimSpace(p)
-	if p == "" {
-		return nil
-	}
-	eqIdx := strings.Index(p, "=")
-	if eqIdx < 0 {
-		(*m)[p] = ""
-	} else {
-		(*m)[p[:eqIdx]] = p[eqIdx+1:]
-	}
-	return nil
-}
-
 func main() {
 
 	var scriptFileName = defaultScriptFileName
 	var funcCalls []string
 	var isAgent bool
 	var secretsFile string
-	var params multiVal
+	var paramsFile string //Path to json file that has the structure infra.BanaiParams
 
 	flag.StringVar(&scriptFileName, "f", defaultScriptFileName, "Set script to run. Default is Banaifile")
 	flag.StringVar(&scriptFileName, "file", defaultScriptFileName, "Set script to run. Default is Banaifile")
 	flag.BoolVar(&isAgent, "agent", false, "true if banai is run as agent")
 	flag.StringVar(&secretsFile, "s", "", "A secrets file. See _examples/secret-file.json")
 	flag.StringVar(&secretsFile, "secrets", "", "A secrets file. See _examples/secret-file.json")
-	flag.Var(&params, "param", "Pass params to the banai. A param value is in the form of name=value. The parameter can be passed many time")
+	flag.StringVar(&paramsFile, "p", "", "A json file holding the parameter of banai")
 	flag.Parse()
 
 	funcCalls = flag.Args()
 
 	//----------- converting
 	if !isAgent {
-		doneCH, _, _ := runBuild(scriptFileName, infra.BanaiParams(params), funcCalls, secretsFile)
+		var params infra.BanaiParams
+		var err error
+		if paramsFile != "" {
+			params, err = infra.LoadParameters(paramsFile)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to load parameters from file %s. Error: %s", paramsFile, err))
+			}
+		}
+		doneCH, _, _ := runBuild(scriptFileName, params, funcCalls, secretsFile)
 
 		exitValue := <-doneCH
 		if !exitValue.Complete {

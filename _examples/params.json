@@ -1,0 +1,10 @@
+{   
+    "param1":{
+        "type":"string",
+        "value":"This is parameter string"
+    },
+    "param2":{
+        "type":"list",
+        "value":["param list 1","param list 2"]
+    }
+}

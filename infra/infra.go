@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -23,45 +24,35 @@ var ErrScriptAbort = errors.New("Banai Script Aborted")
 //ErrScriptDone Called when script uses done to signal that execution is done
 var ErrScriptDone = errors.New("Banai Script Done")
 
-//GenerateBanaiResult create a result object
-func GenerateBanaiResult(complete bool, err error, params map[string]string, resultObject interface{}) BanaiResult {
-	ret := BanaiResult{
-		Complete: complete,
-	}
-
-	if err != nil {
-		ret.ErrorMessage = fmt.Sprint(err)
-	}
-	var eqIdx int
-	ret.Env = make(map[string]string)
-
-	//extract environment varaibles
-	for _, env := range os.Environ() {
-		env = strings.TrimSpace(env)
-		eqIdx = strings.Index(env, "=")
-		if eqIdx < 0 {
-			ret.Env[env] = ""
-		} else {
-			ret.Env[env[:eqIdx]] = env[eqIdx+1:]
-		}
-	} //for
-
-	ret.Params = make(map[string]string)
-	if params != nil {
-		for k, v := range params {
-			ret.Params[k] = v
-		}
-	}
-	ret.Result = resultObject
-
-	return ret
-}
-
 //GlobalExecutionResultObjectName The name of the Javascript Global object that holds the Result field of BanaiResult
 const GlobalExecutionResultObjectName = "banaiResult"
 
+//BanaiParamTypeString BanaiParamInfo.Value is a string
+const BanaiParamTypeString = "string" //A string
+
+//BanaiParamTypeList BanaiParamInfo.Value is a list of string
+const BanaiParamTypeList = "list" // List of strings
+
+//BanaiParamData The value of
+type BanaiParamData struct {
+	Type  string      `json:"type,omitempty"`  // One of BanaiParamType values
+	Value interface{} `json:"value,omitempty"` //Align with the type
+}
+
 //BanaiParams are passed to banai on creation
-type BanaiParams map[string]string
+type BanaiParams map[string]BanaiParamData
+
+//LoadParameters loads banai parameters from json file
+func LoadParameters(parameterFilePath string) (param BanaiParams, err error) {
+	var data []byte
+	data, err = ioutil.ReadFile(parameterFilePath)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(data, &param)
+
+	return
+}
 
 //BanaiResult is a return object of banai. This value is set by the shell commands: done or exit
 //If the user does not call done or exit explicitrly than this object is created by the Banai object in the following way:
@@ -84,6 +75,35 @@ type Banai struct {
 	secretFolder string
 	secrets      map[string]secretStruct
 	Result       BanaiResult
+}
+
+//GenerateBanaiResult create a result object
+func GenerateBanaiResult(complete bool, err error, params BanaiParams, resultObject interface{}) BanaiResult {
+	ret := BanaiResult{
+		Complete: complete,
+	}
+
+	if err != nil {
+		ret.ErrorMessage = fmt.Sprint(err)
+	}
+	var eqIdx int
+	ret.Env = make(map[string]string)
+
+	//extract environment varaibles
+	for _, env := range os.Environ() {
+		env = strings.TrimSpace(env)
+		eqIdx = strings.Index(env, "=")
+		if eqIdx < 0 {
+			ret.Env[env] = ""
+		} else {
+			ret.Env[env[:eqIdx]] = env[eqIdx+1:]
+		}
+	} //for
+
+	ret.Params = BanaiParams{}
+	ret.Result = resultObject
+
+	return ret
 }
 
 func (b *Banai) abortExecution(returnObject interface{}) {
