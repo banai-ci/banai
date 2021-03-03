@@ -106,9 +106,9 @@ function fileExamples() {
 
 function zipExample() {
     println("Ziping dump")
-    println("File zipped: ", arZip("dump-out/dump.zip", "dump"))
+    println("File zipped: ", arZip("dump/dump-out/dump.zip", "dump/dump-in"))
     println("Unzipping....")
-    println("Files unzipped: ", arUnzip("dump-out/dump.zip", "dump-out"))
+    println("Files unzipped: ", arUnzip("dump/dump-out/dump.zip", "dump/dump-out"))
 }
 
 function dockerExample() {
@@ -148,27 +148,39 @@ function testREST() {
 }
 
 function testSecrets() {
-    println("Text secret",getTextSecret("secret 1"))
+    println("Text secret", getTextSecret("secret 1"))
     println("SSH secret", JSON.stringify(getSSHSecret("secret 2")))
     println("User passowrd", JSON.stringify(getUserPassSecret("secret 3")))
 
 }
 
-function causeException(){
+function causeException() {
     throw "Testing exception from banai script"
 }
 
+function testGit() {
+    var opt = {
+        "secretId": "",
+        "privateKeyPath": "/home/sagi/.ssh/id_rsa",
+        "user": "",
+        "password": ""
+    }
+
+
+    gitClone("bitbucket.org:sextillionio/web-api.git", "dump/web-api", opt)
+}
+
 function main() {
-    //localScripts()
-    //remoteCommands()
+    // localScripts()
+    // remoteCommands()
     // fileExamples()
     // zipExample()
     // hashExample()
     // testREST()
     // testSecrets()
+    testGit()
     //causeException()
-    //println("After cause exception")
     //abort()
     //done()
-    
+
 }
