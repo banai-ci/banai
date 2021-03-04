@@ -161,18 +161,35 @@ function causeException() {
 }
 
 function testGit() {
-    var opt = {
+    var optDirectSSH = {
         "secretId": "",
         "privateKeyPath": "/home/sagi/.ssh/id_rsa",
         "user": "",
         "password": ""
     }
-    var targetFolder="dump/web-api"
-    
-    if (fsHas(targetFolder)){
-        fsRemoveDir(targetFolder)
+
+    var optSecretSSH = {
+        "secretId": "secret 2",
+        "privateKeyPath": "",
+        "user": "",
+        "password": ""
     }
-    gitClone("bitbucket.org:sextillionio/web-api.git",targetFolder , opt)
+    
+    var targetFolder="dump/git-demo-repo"
+    var gitURL="https://github.com/jselbie/stunserver"
+    
+    if (!fsHas(targetFolder)){
+        gitClone(gitURL,targetFolder)    
+    }
+    
+   
+    //gitPull(targetFolder , optSecretSSH)
+    var branches=gitBranches(targetFolder)
+    println("Repo branches",JSON.stringify(branches))
+
+
+    var tags=gitTags(targetFolder )
+    println("Repo tags",JSON.stringify(tags))
 }
 
 function main() {
@@ -182,7 +199,7 @@ function main() {
     // zipExample()
     // hashExample()
     // testREST()
-    // testSecrets()
+    testSecrets()
     testGit()
     //causeException()
     //abort()
