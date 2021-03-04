@@ -14,12 +14,13 @@ import (
 
 var banai *infra.Banai
 
-//GitCloneOptions Auth to connect with git
-type GitCloneOptions struct {
-	SecretID       string `json:"secretId,omitempty"`
-	User           string `json:"user,omitempty"`
-	Password       string `json:"password,omitempty"`
-	PrivateKeyPath string `json:"privateKeyPath,omitempty"`
+//GitBanaiOptions Auth to connect with git
+type GitBanaiOptions struct {
+	SecretID             string `json:"secretId,omitempty"`
+	User                 string `json:"user,omitempty"`
+	Password             string `json:"password,omitempty"`
+	PrivateKeyPath       string `json:"privateKeyPath,omitempty"`
+	RemoteRepositoryName string `json:"remoteRepositoryName,omitempty"`
 }
 
 func createAuthTransportFromUserPassword(user, password string) (ret transport.AuthMethod) {
@@ -61,7 +62,7 @@ func createAuthTransportFromBanaiSecretID(secretID string) (ret transport.AuthMe
 	return
 }
 
-func createAuthFromGitOptions(cloneOptions GitCloneOptions) (creds transport.AuthMethod, err error) {
+func createAuthFromGitOptions(cloneOptions GitBanaiOptions) (creds transport.AuthMethod, err error) {
 
 	if strings.TrimSpace(cloneOptions.SecretID) != "" {
 		creds, err = createAuthTransportFromBanaiSecretID(cloneOptions.SecretID)
@@ -74,16 +75,19 @@ func createAuthFromGitOptions(cloneOptions GitCloneOptions) (creds transport.Aut
 	return
 }
 
-func gitClone(originURL string, targetFolder string, cloneOpt ...GitCloneOptions) {
+func gitClone(originURL string, targetFolder string, opt ...GitBanaiOptions) {
 	targetFolder = strings.TrimSpace(targetFolder)
 	if targetFolder == "" {
 		targetFolder = "."
 	}
-
+	var gitBanaiOpt *GitBanaiOptions
+	if opt != nil && len(opt) > 0 {
+		gitBanaiOpt = &opt[0]
+	}
 	var err error
 	var creds transport.AuthMethod
-	if cloneOpt != nil && len(cloneOpt) > 0 {
-		creds, err = createAuthFromGitOptions(cloneOpt[0])
+	if gitBanaiOpt != nil {
+		creds, err = createAuthFromGitOptions(*gitBanaiOpt)
 		banai.PanicOnError(err)
 	}
 
@@ -96,8 +100,79 @@ func gitClone(originURL string, targetFolder string, cloneOpt ...GitCloneOptions
 
 }
 
-func gitPull(localRepo string, pullFrom string, cloneOpt ...GitCloneOptions) {
+func gitPull(localRepoFolder string, opt ...GitBanaiOptions) {
+	if strings.TrimSpace(localRepoFolder) == "" {
+		localRepoFolder = "."
+	}
 
+	var banaiGitOpt *GitBanaiOptions
+	if opt != nil && len(opt) > 0 {
+		banaiGitOpt = &opt[0]
+	}
+
+	var err error
+	var creds transport.AuthMethod
+	if banaiGitOpt != nil {
+		creds, err = createAuthFromGitOptions(*banaiGitOpt)
+		banai.PanicOnError(err)
+	}
+
+	r, err := git.PlainOpen(localRepoFolder)
+	banai.PanicOnError(err)
+	w, err := r.Worktree()
+	banai.PanicOnError(err)
+
+	pullOpt := &git.PullOptions{
+		Auth: creds,
+	}
+	if banaiGitOpt != nil {
+		if banaiGitOpt.RemoteRepositoryName != "" {
+			pullOpt.RemoteName = banaiGitOpt.RemoteRepositoryName
+		}
+	}
+
+	err = w.Pull(pullOpt)
+	banai.PanicOnError(err)
+}
+
+func gitPush(localRepoFolder string, force bool, opt ...GitBanaiOptions) {
+	if strings.TrimSpace(localRepoFolder) == "" {
+		localRepoFolder = "."
+	}
+
+	var banaiGitOpt *GitBanaiOptions
+	if opt != nil && len(opt) > 0 {
+		banaiGitOpt = &opt[0]
+	}
+
+	var err error
+	var creds transport.AuthMethod
+	if banaiGitOpt != nil {
+		creds, err = createAuthFromGitOptions(*banaiGitOpt)
+		banai.PanicOnError(err)
+	}
+
+	r, err := git.PlainOpen(localRepoFolder)
+	banai.PanicOnError(err)
+	pushOpt := &git.PushOptions{
+		Auth:  creds,
+		Force: force,
+	}
+	if banaiGitOpt != nil {
+		if banaiGitOpt.RemoteRepositoryName != "" {
+			pushOpt.RemoteName = banaiGitOpt.RemoteRepositoryName
+		}
+	}
+
+	err = r.Push(pushOpt)
+
+	if err != nil { //ignore error if git is up to date with remote
+		if err == git.NoErrAlreadyUpToDate {
+			err = nil
+		}
+	}
+
+	banai.PanicOnError(err)
 }
 
 //RegisterJSObjects register git objects
@@ -106,4 +181,5 @@ func RegisterJSObjects(b *infra.Banai) {
 
 	banai.Jse.GlobalObject().Set("gitClone", gitClone)
 	banai.Jse.GlobalObject().Set("gitPull", gitPull)
+	banai.Jse.GlobalObject().Set("gitPush", gitPush)
 }
