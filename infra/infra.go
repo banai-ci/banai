@@ -173,6 +173,7 @@ func (b Banai) PanicOnError(e error, t ...string) {
 //Close should be call at the end of using banai to remove all allocated resource during banai execution
 func (b Banai) Close() {
 	os.RemoveAll(b.TmpDir)
+	b.Jse.ClearInterrupt()
 
 }
 

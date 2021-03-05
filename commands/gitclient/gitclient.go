@@ -15,8 +15,8 @@ import (
 
 var banai *infra.Banai
 
-//GitBanaiOptions Auth to connect with git
-type GitBanaiOptions struct {
+//BanaiGitOptions Auth to connect with git
+type BanaiGitOptions struct {
 	SecretID             string `json:"secretId,omitempty"`
 	User                 string `json:"user,omitempty"`
 	Password             string `json:"password,omitempty"`
@@ -24,14 +24,30 @@ type GitBanaiOptions struct {
 	RemoteRepositoryName string `json:"remoteRepositoryName,omitempty"`
 }
 
-//BanaiGitRevisionInfo Overview of a git tag
-type BanaiGitRevisionInfo struct {
+//BanaiGitReferenceInfo Overview of a git tag
+type BanaiGitReferenceInfo struct {
 	Hash     string `json:"hash,omitempty"`
 	Name     string `json:"name,omitempty"`
 	LongName string `json:"longName,omitempty"`
 	IsRemote bool   `json:"isRemote,omitempty"`
 	IsTag    bool   `json:"isTag,omitempty"`
 	IsBranch bool   `json:"isBranch,omitempty"`
+}
+
+func createBanaiGitReferenceFromGitReference(rev *plumbing.Reference, isRemote bool) BanaiGitReferenceInfo {
+	if rev == nil {
+		return BanaiGitReferenceInfo{}
+	}
+
+	return BanaiGitReferenceInfo{
+		Hash:     rev.Hash().String(),
+		Name:     rev.Name().Short(),
+		LongName: rev.Name().String(),
+		IsRemote: isRemote,
+		IsTag:    rev.Name().IsTag(),
+		IsBranch: rev.Name().IsBranch(),
+	}
+
 }
 
 func createAuthTransportFromUserPassword(user, password string) (ret transport.AuthMethod) {
@@ -76,7 +92,7 @@ func createAuthTransportFromBanaiSecretID(secretID string) (ret transport.AuthMe
 	return
 }
 
-func createAuthFromGitOptions(cloneOptions GitBanaiOptions) (creds transport.AuthMethod, err error) {
+func createAuthFromGitOptions(cloneOptions BanaiGitOptions) (creds transport.AuthMethod, err error) {
 
 	if strings.TrimSpace(cloneOptions.SecretID) != "" {
 		creds, err = createAuthTransportFromBanaiSecretID(cloneOptions.SecretID)
@@ -89,12 +105,12 @@ func createAuthFromGitOptions(cloneOptions GitBanaiOptions) (creds transport.Aut
 	return
 }
 
-func gitClone(originURL string, targetFolder string, opt ...GitBanaiOptions) {
+func gitClone(originURL string, targetFolder string, opt ...BanaiGitOptions) {
 	targetFolder = strings.TrimSpace(targetFolder)
 	if targetFolder == "" {
 		targetFolder = "."
 	}
-	var gitBanaiOpt *GitBanaiOptions
+	var gitBanaiOpt *BanaiGitOptions
 	if opt != nil && len(opt) > 0 {
 		gitBanaiOpt = &opt[0]
 	}
@@ -119,7 +135,7 @@ func gitClone(originURL string, targetFolder string, opt ...GitBanaiOptions) {
 	return
 }
 
-func openGitRepositoryOnLocal(localRepoFolder string, opt ...GitBanaiOptions) (repo *git.Repository, banaiGitOpt *GitBanaiOptions, auth transport.AuthMethod, err error) {
+func openLocalGitRepository(localRepoFolder string, opt ...BanaiGitOptions) (repo *git.Repository, banaiGitOpt *BanaiGitOptions, auth transport.AuthMethod, err error) {
 
 	if strings.TrimSpace(localRepoFolder) == "" {
 		localRepoFolder = "."
@@ -133,13 +149,22 @@ func openGitRepositoryOnLocal(localRepoFolder string, opt ...GitBanaiOptions) (r
 		if err != nil {
 			return
 		}
+
+	} else {
+		banaiGitOpt = &BanaiGitOptions{}
 	}
+
+	if banaiGitOpt.RemoteRepositoryName == "" {
+		banaiGitOpt.RemoteRepositoryName = git.DefaultRemoteName
+	}
+
 	repo, err = git.PlainOpen(localRepoFolder)
 
 	banai.PanicOnError(err)
 
 	err = repo.Fetch(&git.FetchOptions{
-		Auth: auth,
+		RemoteName: banaiGitOpt.RemoteRepositoryName,
+		Auth:       auth,
 	})
 
 	if err == git.NoErrAlreadyUpToDate {
@@ -149,12 +174,12 @@ func openGitRepositoryOnLocal(localRepoFolder string, opt ...GitBanaiOptions) (r
 	return
 }
 
-func openGitRemoteRepository(localRepo *git.Repository, banaiOpt *GitBanaiOptions) (*git.Remote, error) {
+func openGitRemoteRepository(localRepo *git.Repository, banaiOpt *BanaiGitOptions) (*git.Remote, error) {
 	//---------- list remote branches
 	var remoteRepo *git.Remote
 	var err error
 
-	repoOpt := GitBanaiOptions{
+	repoOpt := BanaiGitOptions{
 		RemoteRepositoryName: git.DefaultRemoteName,
 	}
 
@@ -171,9 +196,9 @@ func openGitRemoteRepository(localRepo *git.Repository, banaiOpt *GitBanaiOption
 	return remoteRepo, err
 }
 
-func gitPull(localRepoFolder string, opt ...GitBanaiOptions) {
+func gitPull(localRepoFolder string, opt ...BanaiGitOptions) {
 
-	repo, banaiOpt, creds, err := openGitRepositoryOnLocal(localRepoFolder, opt...)
+	repo, banaiOpt, creds, err := openLocalGitRepository(localRepoFolder, opt...)
 	banai.PanicOnError(err)
 	w, err := repo.Worktree()
 	banai.PanicOnError(err)
@@ -197,8 +222,8 @@ func gitPull(localRepoFolder string, opt ...GitBanaiOptions) {
 	banai.PanicOnError(err)
 }
 
-func gitPush(localRepoFolder string, force bool, opt ...GitBanaiOptions) {
-	repo, banaiOpt, creds, err := openGitRepositoryOnLocal(localRepoFolder, opt...)
+func gitPush(localRepoFolder string, force bool, opt ...BanaiGitOptions) {
+	repo, banaiOpt, creds, err := openLocalGitRepository(localRepoFolder, opt...)
 	banai.PanicOnError(err)
 	pushOpt := &git.PushOptions{
 		Auth:  creds,
@@ -223,16 +248,16 @@ func gitPush(localRepoFolder string, force bool, opt ...GitBanaiOptions) {
 	banai.PanicOnError(err)
 }
 
-func meshLocalAndRemote(localRevisions []BanaiGitRevisionInfo, remoteRevisions []BanaiGitRevisionInfo) []BanaiGitRevisionInfo {
+func meshLocalAndRemoteReference(localReferences []BanaiGitReferenceInfo, remoteReferences []BanaiGitReferenceInfo) []BanaiGitReferenceInfo {
 	known := make(map[string]string)
-	ret := make([]BanaiGitRevisionInfo, 0, len(remoteRevisions))
+	ret := make([]BanaiGitReferenceInfo, 0, len(remoteReferences))
 
-	for _, local := range localRevisions {
+	for _, local := range localReferences {
 		known[local.Name] = local.Hash
 		ret = append(ret, local)
 	}
 
-	for _, remote := range remoteRevisions {
+	for _, remote := range remoteReferences {
 		if _, ok := known[remote.Name]; !ok {
 			known[remote.Name] = remote.Hash
 			ret = append(ret, remote)
@@ -241,21 +266,17 @@ func meshLocalAndRemote(localRevisions []BanaiGitRevisionInfo, remoteRevisions [
 	return ret
 }
 
-func gitBranches(localRepoFolder string, opt ...GitBanaiOptions) []BanaiGitRevisionInfo {
-	repo, repoOpt, auth, err := openGitRepositoryOnLocal(localRepoFolder, opt...)
+func gitBranches(localRepoFolder string, opt ...BanaiGitOptions) []BanaiGitReferenceInfo {
+	repo, repoOpt, auth, err := openLocalGitRepository(localRepoFolder, opt...)
 	banai.PanicOnError(err)
 	branchRefs, err := repo.Branches()
+	banai.PanicOnError(err)
+	defer branchRefs.Close()
 
 	//-------- list local Branches
-	localBranches := make([]BanaiGitRevisionInfo, 0)
+	localBranches := make([]BanaiGitReferenceInfo, 0)
 	branchRefs.ForEach(func(rev *plumbing.Reference) error {
-		localBranches = append(localBranches, BanaiGitRevisionInfo{
-			Hash:     rev.Hash().String(),
-			Name:     rev.Name().Short(),
-			LongName: rev.Name().String(),
-			IsBranch: rev.Name().IsBranch(),
-			IsTag:    rev.Name().IsTag(),
-		})
+		localBranches = append(localBranches, createBanaiGitReferenceFromGitReference(rev, false))
 		return nil
 	})
 
@@ -267,38 +288,25 @@ func gitBranches(localRepoFolder string, opt ...GitBanaiOptions) []BanaiGitRevis
 		Auth: auth,
 	})
 
-	remoteBranches := make([]BanaiGitRevisionInfo, 0)
-	for _, rev := range remoteItems {
-		if rev.Name().IsBranch() {
-			remoteBranches = append(remoteBranches, BanaiGitRevisionInfo{
-				Hash:     rev.Hash().String(),
-				Name:     rev.Name().Short(),
-				LongName: rev.Name().String(),
-				IsBranch: rev.Name().IsBranch(),
-				IsTag:    rev.Name().IsTag(),
-				IsRemote: true,
-			})
+	remoteBranches := make([]BanaiGitReferenceInfo, 0)
+	for _, ref := range remoteItems {
+		if ref.Name().IsBranch() {
+			remoteBranches = append(remoteBranches, createBanaiGitReferenceFromGitReference(ref, true))
 		}
 	}
 
-	return meshLocalAndRemote(localBranches, remoteBranches)
+	return meshLocalAndRemoteReference(localBranches, remoteBranches)
 }
 
-func gitTags(localRepoFolder string, opt ...GitBanaiOptions) []BanaiGitRevisionInfo {
-	repo, banaiOpt, creds, err := openGitRepositoryOnLocal(localRepoFolder, opt...)
+func gitTags(localRepoFolder string, opt ...BanaiGitOptions) []BanaiGitReferenceInfo {
+	repo, banaiOpt, creds, err := openLocalGitRepository(localRepoFolder, opt...)
 	banai.PanicOnError(err)
 	tagrefs, err := repo.Tags()
-
-	localRevisions := make([]BanaiGitRevisionInfo, 0)
+	banai.PanicOnError(err)
+	defer tagrefs.Close()
+	localReferences := make([]BanaiGitReferenceInfo, 0)
 	tagrefs.ForEach(func(rev *plumbing.Reference) error {
-		localRevisions = append(localRevisions, BanaiGitRevisionInfo{
-			Hash:     rev.Hash().String(),
-			Name:     rev.Name().Short(),
-			LongName: rev.Name().String(),
-			IsBranch: rev.Name().IsBranch(),
-			IsTag:    rev.Name().IsTag(),
-		})
-
+		localReferences = append(localReferences, createBanaiGitReferenceFromGitReference(rev, false))
 		return nil
 	})
 
@@ -310,21 +318,107 @@ func gitTags(localRepoFolder string, opt ...GitBanaiOptions) []BanaiGitRevisionI
 		Auth: creds,
 	})
 
-	remoteRevisions := make([]BanaiGitRevisionInfo, 0)
-	for _, rev := range remoteItems {
-		if rev.Name().IsTag() {
-			remoteRevisions = append(remoteRevisions, BanaiGitRevisionInfo{
-				Hash:     rev.Hash().String(),
-				Name:     rev.Name().Short(),
-				LongName: rev.Name().String(),
-				IsBranch: rev.Name().IsBranch(),
-				IsTag:    rev.Name().IsTag(),
-				IsRemote: true,
-			})
+	remoteReferences := make([]BanaiGitReferenceInfo, 0)
+	for _, ref := range remoteItems {
+		if ref.Name().IsTag() {
+			remoteReferences = append(remoteReferences, createBanaiGitReferenceFromGitReference(ref, true))
 		}
 	}
 
-	return meshLocalAndRemote(localRevisions, remoteRevisions)
+	return meshLocalAndRemoteReference(localReferences, remoteReferences)
+}
+
+func gitCheckout(localRepoFolder, revisionID string, opt ...BanaiGitOptions) BanaiGitReferenceInfo {
+	repo, repoOpt, auth, err := openLocalGitRepository(localRepoFolder, opt...)
+	banai.PanicOnError(err)
+
+	w, err := repo.Worktree()
+	banai.PanicOnError(err)
+	var found = false
+	hash, err := repo.ResolveRevision(plumbing.Revision(revisionID))
+	if err == nil {
+		err = w.Checkout(&git.CheckoutOptions{
+			Hash: *hash,
+		})
+	} else {
+		branches, err := repo.Branches()
+		banai.PanicOnError(err)
+		var branchHash plumbing.Hash
+		found = false
+
+		branches.ForEach(func(ref *plumbing.Reference) error {
+			if ref.Name().String() == revisionID || ref.Name().Short() == revisionID {
+				branchHash = ref.Hash()
+				found = true
+			}
+			return nil
+		})
+
+		if found {
+			err = w.Checkout(&git.CheckoutOptions{
+				Hash: branchHash,
+			})
+			banai.PanicOnError(err)
+		} else {
+			var tagHash plumbing.Hash
+			found = false
+			tags, err := repo.Tags()
+			banai.PanicOnError(err)
+			defer tags.Close()
+			tags.ForEach(func(ref *plumbing.Reference) error {
+				if ref.Name().String() == revisionID || ref.Name().Short() == revisionID {
+					tagHash = ref.Hash()
+					found = true
+				}
+
+				return nil
+			})
+
+			if found {
+				err = w.Checkout(&git.CheckoutOptions{
+					Hash: tagHash,
+				})
+				banai.PanicOnError(err)
+			}
+		}
+
+	}
+
+	if !found {
+		remote, err := openGitRemoteRepository(repo, repoOpt)
+		banai.PanicOnError(err)
+		remote.Fetch(&git.FetchOptions{
+			RemoteName: repoOpt.RemoteRepositoryName,
+			Auth:       auth,
+		})
+
+		remoteReferences, err := remote.List(&git.ListOptions{
+			Auth: auth,
+		})
+		banai.PanicOnError(err)
+
+		for _, ref := range remoteReferences {
+			if revisionID == ref.Name().String() || revisionID == ref.Name().Short() {
+
+				err = w.Checkout(&git.CheckoutOptions{
+					Hash: ref.Hash(),
+				})
+				banai.PanicOnError(err)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			banai.PanicOnError(fmt.Errorf("Invalid referenc, should be branch, tag or commit"))
+		}
+
+	}
+
+	ref, err := repo.Head()
+	banai.PanicOnError(err)
+
+	return createBanaiGitReferenceFromGitReference(ref, false)
 }
 
 //RegisterJSObjects register git objects
@@ -336,5 +430,6 @@ func RegisterJSObjects(b *infra.Banai) {
 	banai.Jse.GlobalObject().Set("gitPush", gitPush)
 	banai.Jse.GlobalObject().Set("gitBranches", gitBranches)
 	banai.Jse.GlobalObject().Set("gitTags", gitTags)
+	banai.Jse.GlobalObject().Set("gitCheckout", gitCheckout)
 
 }

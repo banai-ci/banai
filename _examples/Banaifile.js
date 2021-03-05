@@ -190,6 +190,16 @@ function testGit() {
 
     var tags=gitTags(targetFolder )
     println("Repo tags",JSON.stringify(tags))
+    
+    var branch="aslr"
+    var tag="version1.1.3"
+    var ref=gitCheckout(targetFolder,branch) 
+    println("Reference of checkout ",branch," ",JSON.stringify(ref))
+
+    ref=gitCheckout(targetFolder,tag) 
+    println("Reference of checkout ",tag," ",JSON.stringify(ref))
+
+
 }
 
 function main() {
