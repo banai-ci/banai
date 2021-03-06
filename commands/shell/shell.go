@@ -35,7 +35,7 @@ func envToMap() map[string]string {
 	return asMap
 }
 
-func callShell(cmd string, cmdOpt ...shellutils.CommandOptions) *shellutils.ShellResult {
+func callShell(cmd string, cmdOpt ...shellutils.ShellOptions) *shellutils.ShellResult {
 	var e error
 
 	var ret *shellutils.ShellResult
@@ -64,13 +64,13 @@ func callShell(cmd string, cmdOpt ...shellutils.CommandOptions) *shellutils.Shel
 	return ret
 }
 
-func shellScript(scriptFile string, cmdOpt ...shellutils.CommandOptions) *shellutils.ShellResult {
+func shellScript(scriptFile string, cmdOpt ...shellutils.ShellOptions) *shellutils.ShellResult {
 	fileContent, e := ioutil.ReadFile(scriptFile)
 	banai.PanicOnError(e)
 	return callShell(string(fileContent), cmdOpt...)
 }
 
-func shell(cmd string, cmdOpt ...shellutils.CommandOptions) *shellutils.ShellResult {
+func shell(cmd string, cmdOpt ...shellutils.ShellOptions) *shellutils.ShellResult {
 	return callShell(cmd, cmdOpt...)
 }
 

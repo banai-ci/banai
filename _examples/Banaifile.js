@@ -184,7 +184,7 @@ function testGit() {
     }
     
    
-    //gitPull(targetFolder , optSecretSSH)
+    // gitPull(targetFolder , optSecretSSH)
     // var branches=gitBranches(repoFolder)
     // println("Repo branches",JSON.stringify(branches))
 
@@ -200,12 +200,9 @@ function testGit() {
     // ref=gitCheckout(targetFolder,tag) 
     // println("Reference of checkout ",tag," ",JSON.stringify(ref))
 
-    var branchName = "develop"
-
-    println("Switched branch info: ",JSON.stringify(gitSwitchBranch(repoFolder,branchName)))
-    gitPush(repoFolder,false)
     
-    //gitCommit(repoFolder,"This is my commit")
+    
+    
 
 
 }

@@ -19,8 +19,8 @@ type ShellResult struct {
 	Err  string `json:"err,omitempty"`
 }
 
-//CommandOptions how to run the a shell command
-type CommandOptions struct {
+//ShellOptions how to run the a shell command
+type ShellOptions struct {
 	Shell    string   `json:"shell,omitempty"`
 	In       string   `json:"in,omitempty"`
 	Ins      []string `json:"ins,omitempty"`
@@ -30,26 +30,26 @@ type CommandOptions struct {
 }
 
 //DefaultBashCommandOptions default for running with bash
-func DefaultBashCommandOptions() CommandOptions {
-	ret := CommandOptions{}
+func DefaultBashCommandOptions() ShellOptions {
+	ret := ShellOptions{}
 	ret.Shell = "/bin/bash"
 	return ret
 }
 
 //RunShellCommand execute a command using the shell
-func RunShellCommand(commandToRun string, cmdOpt ...CommandOptions) (*ShellResult, error) {
-	if cmdOpt == nil {
-		cmdOpt = []CommandOptions{DefaultBashCommandOptions()}
-	} else {
-		if cmdOpt[0].Shell == "" {
-			cmdOpt[0].Shell = "/bin/bash"
-		}
+func RunShellCommand(commandToRun string, cmdOpt ...ShellOptions) (*ShellResult, error) {
+	var shellOpt = DefaultBashCommandOptions()
+	if cmdOpt != nil && len(cmdOpt) > 0 {
+		shellOpt = cmdOpt[0]
+	}
 
+	if shellOpt.Shell == "" {
+		shellOpt.Shell = "/bin/bash"
 	}
 
 	var finalCommand = make([]string, 0)
 
-	var shellCmd = cmdOpt[0].Shell
+	var shellCmd = shellOpt.Shell
 
 	finalCommand = append(finalCommand, "-c")
 	finalCommand = append(finalCommand, commandToRun)

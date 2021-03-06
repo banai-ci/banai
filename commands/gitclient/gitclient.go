@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/banai-ci/banai/infra"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -112,10 +110,15 @@ func gitClone(originURL string, targetFolder string, opt ...BanaiGitOptions) {
 	if targetFolder == "" {
 		targetFolder = "."
 	}
-	var gitBanaiOpt *BanaiGitOptions
+	var gitBanaiOpt = &BanaiGitOptions{}
 	if opt != nil && len(opt) > 0 {
 		gitBanaiOpt = &opt[0]
 	}
+
+	if gitBanaiOpt.RemoteRepositoryName == "" {
+		gitBanaiOpt.RemoteRepositoryName = git.DefaultRemoteName
+	}
+
 	var err error
 	var creds transport.AuthMethod
 	if gitBanaiOpt != nil {
@@ -131,7 +134,8 @@ func gitClone(originURL string, targetFolder string, opt ...BanaiGitOptions) {
 	banai.PanicOnError(err)
 
 	err = r.Fetch(&git.FetchOptions{
-		Auth: creds,
+		Auth:       creds,
+		RemoteName: gitBanaiOpt.RemoteRepositoryName,
 	})
 
 	return
@@ -143,6 +147,8 @@ func openLocalGitRepository(localRepoFolder string, opt ...BanaiGitOptions) (rep
 		localRepoFolder = "."
 	}
 
+	banaiGitOpt = &BanaiGitOptions{}
+
 	if opt != nil && len(opt) > 0 {
 		banaiGitOpt = &opt[0]
 	}
@@ -152,8 +158,6 @@ func openLocalGitRepository(localRepoFolder string, opt ...BanaiGitOptions) (rep
 			return
 		}
 
-	} else {
-		banaiGitOpt = &BanaiGitOptions{}
 	}
 
 	if banaiGitOpt.RemoteRepositoryName == "" {
@@ -330,150 +334,152 @@ func gitTags(localRepoFolder string, opt ...BanaiGitOptions) []BanaiGitReference
 	return meshLocalAndRemoteReference(localReferences, remoteReferences)
 }
 
-func gitCheckout(localRepoFolder, revisionID string, opt ...BanaiGitOptions) BanaiGitReferenceInfo {
-	repo, repoOpt, auth, err := openLocalGitRepository(localRepoFolder, opt...)
-	banai.PanicOnError(err)
+// func gitCheckout(localRepoFolder, revisionID string, opt ...BanaiGitOptions) BanaiGitReferenceInfo {
+// 	repo, repoOpt, auth, err := openLocalGitRepository(localRepoFolder, opt...)
+// 	banai.PanicOnError(err)
 
-	w, err := repo.Worktree()
-	banai.PanicOnError(err)
-	var found = false
-	hash, err := repo.ResolveRevision(plumbing.Revision(revisionID))
-	if err == nil {
-		err = w.Checkout(&git.CheckoutOptions{
-			Hash: *hash,
-		})
-	} else {
-		branches, err := repo.Branches()
-		banai.PanicOnError(err)
-		var branchHash plumbing.Hash
-		found = false
+// 	w, err := repo.Worktree()
+// 	banai.PanicOnError(err)
+// 	var found = false
+// 	hash, err := repo.ResolveRevision(plumbing.Revision(revisionID))
+// 	if err == nil {
+// 		err = w.Checkout(&git.CheckoutOptions{
+// 			Hash: *hash,
+// 		})
+// 	} else {
+// 		branches, err := repo.Branches()
+// 		banai.PanicOnError(err)
+// 		var branchHash plumbing.Hash
+// 		found = false
 
-		branches.ForEach(func(ref *plumbing.Reference) error {
-			if ref.Name().String() == revisionID || ref.Name().Short() == revisionID {
-				branchHash = ref.Hash()
-				found = true
-			}
-			return nil
-		})
+// 		branches.ForEach(func(ref *plumbing.Reference) error {
+// 			if ref.Name().String() == revisionID || ref.Name().Short() == revisionID {
+// 				branchHash = ref.Hash()
+// 				found = true
+// 			}
+// 			return nil
+// 		})
 
-		if found {
-			err = w.Checkout(&git.CheckoutOptions{
-				Hash: branchHash,
-			})
-			banai.PanicOnError(err)
-		} else {
-			var tagHash plumbing.Hash
-			found = false
-			tags, err := repo.Tags()
-			banai.PanicOnError(err)
-			defer tags.Close()
-			tags.ForEach(func(ref *plumbing.Reference) error {
-				if ref.Name().String() == revisionID || ref.Name().Short() == revisionID {
-					tagHash = ref.Hash()
-					found = true
-				}
+// 		if found {
+// 			err = w.Checkout(&git.CheckoutOptions{
+// 				Hash: branchHash,
+// 			})
+// 			banai.PanicOnError(err)
+// 		} else {
+// 			var tagHash plumbing.Hash
+// 			found = false
+// 			tags, err := repo.Tags()
+// 			banai.PanicOnError(err)
+// 			defer tags.Close()
+// 			tags.ForEach(func(ref *plumbing.Reference) error {
+// 				if ref.Name().String() == revisionID || ref.Name().Short() == revisionID {
+// 					tagHash = ref.Hash()
+// 					found = true
+// 				}
 
-				return nil
-			})
+// 				return nil
+// 			})
 
-			if found {
-				err = w.Checkout(&git.CheckoutOptions{
-					Hash: tagHash,
-				})
-				banai.PanicOnError(err)
-			}
-		}
+// 			if found {
+// 				err = w.Checkout(&git.CheckoutOptions{
+// 					Hash: tagHash,
+// 				})
+// 				banai.PanicOnError(err)
+// 			}
+// 		}
 
-	}
+// 	}
 
-	if !found {
-		remote, err := openGitRemoteRepository(repo, repoOpt)
-		banai.PanicOnError(err)
-		remote.Fetch(&git.FetchOptions{
-			RemoteName: repoOpt.RemoteRepositoryName,
-			Auth:       auth,
-		})
+// 	if !found {
+// 		remote, err := openGitRemoteRepository(repo, repoOpt)
+// 		banai.PanicOnError(err)
+// 		remote.Fetch(&git.FetchOptions{
+// 			RemoteName: repoOpt.RemoteRepositoryName,
+// 			Auth:       auth,
+// 		})
 
-		remoteReferences, err := remote.List(&git.ListOptions{
-			Auth: auth,
-		})
-		banai.PanicOnError(err)
+// 		remoteReferences, err := remote.List(&git.ListOptions{
+// 			Auth: auth,
+// 		})
+// 		banai.PanicOnError(err)
 
-		for _, ref := range remoteReferences {
-			if revisionID == ref.Name().String() || revisionID == ref.Name().Short() {
+// 		for _, ref := range remoteReferences {
+// 			if revisionID == ref.Name().String() || revisionID == ref.Name().Short() {
 
-				err = w.Checkout(&git.CheckoutOptions{
-					Hash: ref.Hash(),
-				})
-				banai.PanicOnError(err)
-				found = true
-				break
-			}
-		}
+// 				err = w.Checkout(&git.CheckoutOptions{
+// 					Hash: ref.Hash(),
+// 				})
+// 				banai.PanicOnError(err)
+// 				found = true
+// 				break
+// 			}
+// 		}
 
-		if !found {
-			banai.PanicOnError(fmt.Errorf("Invalid referenc, should be branch, tag or commit"))
-		}
+// 		if !found {
+// 			banai.PanicOnError(fmt.Errorf("Invalid referenc, should be branch, tag or commit"))
+// 		}
 
-	}
+// 	}
 
-	ref, err := repo.Head()
-	banai.PanicOnError(err)
+// 	ref, err := repo.Head()
+// 	banai.PanicOnError(err)
 
-	return createBanaiGitReferenceFromGitReference(ref, false)
-}
+// 	return createBanaiGitReferenceFromGitReference(ref, false)
+// }
 
-func gitCommit(localRepoFolder string, commitMessage string, opt ...BanaiGitOptions) BanaiGitReferenceInfo {
-	repo, _, _, err := openLocalGitRepository(localRepoFolder, opt...)
-	banai.PanicOnError(err)
-	w, err := repo.Worktree()
-	banai.PanicOnError(err)
-	commit, err := w.Commit(commitMessage, &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Banai CI",
-			Email: "Banai@Banai",
-			When:  time.Now(),
-		},
-	})
-	banai.PanicOnError(err)
+// func gitCommit(localRepoFolder string, commitMessage string, opt ...BanaiGitOptions) BanaiGitReferenceInfo {
+// 	repo, _, _, err := openLocalGitRepository(localRepoFolder, opt...)
+// 	banai.PanicOnError(err)
+// 	w, err := repo.Worktree()
+// 	banai.PanicOnError(err)
+// 	commit, err := w.Commit(commitMessage, &git.CommitOptions{
+// 		Author: &object.Signature{
+// 			Name:  "Banai CI",
+// 			Email: "Banai@Banai",
+// 			When:  time.Now(),
+// 		},
+// 	})
+// 	banai.PanicOnError(err)
 
-	commitObj, err := repo.CommitObject(commit)
-	banai.PanicOnError(err)
+// 	commitObj, err := repo.CommitObject(commit)
+// 	banai.PanicOnError(err)
 
-	return BanaiGitReferenceInfo{
-		Hash: commitObj.Hash.String(),
-	}
+// 	return BanaiGitReferenceInfo{
+// 		Hash: commitObj.Hash.String(),
+// 	}
 
-}
+// }
 
-func gitSwitchBranch(localRepoFolder string, newBranchName string, opt ...BanaiGitOptions) BanaiGitReferenceInfo {
-	repo, _, _, err := openLocalGitRepository(localRepoFolder, opt...)
-	banai.PanicOnError(err)
-	banai.PanicOnError(err)
+// func gitSwitchBranch(localRepoFolder string, newBranchName string, opt ...BanaiGitOptions) BanaiGitReferenceInfo {
+// 	repo, _, _, err := openLocalGitRepository(localRepoFolder, opt...)
+// 	banai.PanicOnError(err)
 
-	w, err := repo.Worktree()
-	banai.PanicOnError(err)
+// 	w, err := repo.Worktree()
+// 	banai.PanicOnError(err)
 
-	//first try to checkout the branch
-	if !strings.HasPrefix(newBranchName, "refs/heads") {
-		newBranchName = "refs/heads/" + newBranchName
-	}
-	err = w.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.ReferenceName(newBranchName),
-		Create: false,
-	})
-	if err != nil {
-		err = w.Checkout(&git.CheckoutOptions{
-			Branch: plumbing.ReferenceName(newBranchName),
-			Create: true,
-		})
-		banai.PanicOnError(err)
-	}
+// 	//first try to checkout the branch
+// 	if !strings.HasPrefix(newBranchName, "refs/heads") {
+// 		newBranchName = "refs/heads/" + newBranchName
+// 	}
+// 	err = w.Checkout(&git.CheckoutOptions{
+// 		Branch: plumbing.ReferenceName(newBranchName),
+// 		Create: false,
+// 	})
 
-	newBranchRef, err := repo.Head()
-	banai.PanicOnError(err)
-	return createBanaiGitReferenceFromGitReference(newBranchRef, false)
-}
+// 	if err != nil {
+// 		banai.Logger.Info("Branch ", newBranchName, " Not exists on local. Creating")
+// 		err = w.Checkout(&git.CheckoutOptions{
+// 			Branch: plumbing.ReferenceName(newBranchName),
+// 			Create: true,
+// 		})
+// 		banai.PanicOnError(err)
+
+// 	}
+
+// 	newBranchRef, err := repo.Head()
+// 	banai.PanicOnError(err)
+// 	return createBanaiGitReferenceFromGitReference(newBranchRef, false)
+// }
 
 //RegisterJSObjects register git objects
 func RegisterJSObjects(b *infra.Banai) {
@@ -484,8 +490,8 @@ func RegisterJSObjects(b *infra.Banai) {
 	banai.Jse.GlobalObject().Set("gitPush", gitPush)
 	banai.Jse.GlobalObject().Set("gitBranches", gitBranches)
 	banai.Jse.GlobalObject().Set("gitTags", gitTags)
-	banai.Jse.GlobalObject().Set("gitCheckout", gitCheckout)
-	banai.Jse.GlobalObject().Set("gitCommit", gitCommit)
-	banai.Jse.GlobalObject().Set("gitSwitchBranch", gitSwitchBranch)
+	// banai.Jse.GlobalObject().Set("gitCheckout", gitCheckout)
+	// banai.Jse.GlobalObject().Set("gitCommit", gitCommit)
+	// banai.Jse.GlobalObject().Set("gitSwitchBranch", gitSwitchBranch)
 
 }
