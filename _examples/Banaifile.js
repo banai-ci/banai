@@ -175,22 +175,22 @@ function testGit() {
         "password": ""
     }
     
-    var targetFolder="/home/sagi/src/banai-ci/test-repos/pub-repo"
+    var repoFolder="/home/sagi/src/banai-ci/test-repos/pub-repo"
     var gitURL="git@github.com:banai-ci/pub-repo.git"
     
-    if (!fsHas(targetFolder)){
-        gitClone(gitURL,targetFolder)   //clone without auth
+    if (!fsHas(repoFolder)){
+        gitClone(gitURL,repoFolder)   //clone without auth
         //gitClone(gitURL,targetFolder,optDirectSSH)      //clone with auth
     }
     
    
     //gitPull(targetFolder , optSecretSSH)
-    var branches=gitBranches(targetFolder)
-    println("Repo branches",JSON.stringify(branches))
+    // var branches=gitBranches(repoFolder)
+    // println("Repo branches",JSON.stringify(branches))
 
 
-    var tags=gitTags(targetFolder )
-    println("Repo tags",JSON.stringify(tags))
+    // var tags=gitTags(repoFolder )
+    // println("Repo tags",JSON.stringify(tags))
     
     // var branch="aslr"
     // var tag="version1.1.3"
@@ -200,7 +200,13 @@ function testGit() {
     // ref=gitCheckout(targetFolder,tag) 
     // println("Reference of checkout ",tag," ",JSON.stringify(ref))
 
-    gitCommit(targetFolder,"This is my commit")
+    var branchName = "develop"
+
+    println("Switched branch info: ",JSON.stringify(gitSwitchBranch(repoFolder,branchName)))
+    gitPush(repoFolder,false)
+    
+    //gitCommit(repoFolder,"This is my commit")
+
 
 }
 

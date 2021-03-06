@@ -446,6 +446,35 @@ func gitCommit(localRepoFolder string, commitMessage string, opt ...BanaiGitOpti
 
 }
 
+func gitSwitchBranch(localRepoFolder string, newBranchName string, opt ...BanaiGitOptions) BanaiGitReferenceInfo {
+	repo, _, _, err := openLocalGitRepository(localRepoFolder, opt...)
+	banai.PanicOnError(err)
+	banai.PanicOnError(err)
+
+	w, err := repo.Worktree()
+	banai.PanicOnError(err)
+
+	//first try to checkout the branch
+	if !strings.HasPrefix(newBranchName, "refs/heads") {
+		newBranchName = "refs/heads/" + newBranchName
+	}
+	err = w.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName(newBranchName),
+		Create: false,
+	})
+	if err != nil {
+		err = w.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.ReferenceName(newBranchName),
+			Create: true,
+		})
+		banai.PanicOnError(err)
+	}
+
+	newBranchRef, err := repo.Head()
+	banai.PanicOnError(err)
+	return createBanaiGitReferenceFromGitReference(newBranchRef, false)
+}
+
 //RegisterJSObjects register git objects
 func RegisterJSObjects(b *infra.Banai) {
 	banai = b
@@ -457,5 +486,6 @@ func RegisterJSObjects(b *infra.Banai) {
 	banai.Jse.GlobalObject().Set("gitTags", gitTags)
 	banai.Jse.GlobalObject().Set("gitCheckout", gitCheckout)
 	banai.Jse.GlobalObject().Set("gitCommit", gitCommit)
+	banai.Jse.GlobalObject().Set("gitSwitchBranch", gitSwitchBranch)
 
 }
