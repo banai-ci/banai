@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/banai-ci/banai/infra"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -421,6 +423,29 @@ func gitCheckout(localRepoFolder, revisionID string, opt ...BanaiGitOptions) Ban
 	return createBanaiGitReferenceFromGitReference(ref, false)
 }
 
+func gitCommit(localRepoFolder string, commitMessage string, opt ...BanaiGitOptions) BanaiGitReferenceInfo {
+	repo, _, _, err := openLocalGitRepository(localRepoFolder, opt...)
+	banai.PanicOnError(err)
+	w, err := repo.Worktree()
+	banai.PanicOnError(err)
+	commit, err := w.Commit(commitMessage, &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Banai CI",
+			Email: "Banai@Banai",
+			When:  time.Now(),
+		},
+	})
+	banai.PanicOnError(err)
+
+	commitObj, err := repo.CommitObject(commit)
+	banai.PanicOnError(err)
+
+	return BanaiGitReferenceInfo{
+		Hash: commitObj.Hash.String(),
+	}
+
+}
+
 //RegisterJSObjects register git objects
 func RegisterJSObjects(b *infra.Banai) {
 	banai = b
@@ -431,5 +456,6 @@ func RegisterJSObjects(b *infra.Banai) {
 	banai.Jse.GlobalObject().Set("gitBranches", gitBranches)
 	banai.Jse.GlobalObject().Set("gitTags", gitTags)
 	banai.Jse.GlobalObject().Set("gitCheckout", gitCheckout)
+	banai.Jse.GlobalObject().Set("gitCommit", gitCommit)
 
 }

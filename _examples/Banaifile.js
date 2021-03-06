@@ -175,11 +175,12 @@ function testGit() {
         "password": ""
     }
     
-    var targetFolder="dump/git-demo-repo"
-    var gitURL="https://github.com/jselbie/stunserver"
+    var targetFolder="/home/sagi/src/banai-ci/test-repos/pub-repo"
+    var gitURL="git@github.com:banai-ci/pub-repo.git"
     
     if (!fsHas(targetFolder)){
-        gitClone(gitURL,targetFolder)    
+        gitClone(gitURL,targetFolder)   //clone without auth
+        //gitClone(gitURL,targetFolder,optDirectSSH)      //clone with auth
     }
     
    
@@ -191,14 +192,15 @@ function testGit() {
     var tags=gitTags(targetFolder )
     println("Repo tags",JSON.stringify(tags))
     
-    var branch="aslr"
-    var tag="version1.1.3"
-    var ref=gitCheckout(targetFolder,branch) 
-    println("Reference of checkout ",branch," ",JSON.stringify(ref))
+    // var branch="aslr"
+    // var tag="version1.1.3"
+    // var ref=gitCheckout(targetFolder,branch) 
+    // println("Reference of checkout ",branch," ",JSON.stringify(ref))
 
-    ref=gitCheckout(targetFolder,tag) 
-    println("Reference of checkout ",tag," ",JSON.stringify(ref))
+    // ref=gitCheckout(targetFolder,tag) 
+    // println("Reference of checkout ",tag," ",JSON.stringify(ref))
 
+    gitCommit(targetFolder,"This is my commit")
 
 }
 
