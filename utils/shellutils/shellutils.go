@@ -64,8 +64,8 @@ func RunShellCommand(commandToRun string, cmdOpt ...ShellOptions) (*ShellResult,
 	}
 
 	command.Env = append(command.Env, os.Environ()...)
-	if cmdOpt[0].Env != nil {
-		command.Env = append(command.Env, cmdOpt[0].Env...)
+	if shellOpt.Env != nil {
+		command.Env = append(command.Env, shellOpt.Env...)
 	}
 
 	cmdStdOutPipe, _ := command.StdoutPipe()

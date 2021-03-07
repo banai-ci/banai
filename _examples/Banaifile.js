@@ -161,6 +161,12 @@ function causeException() {
 }
 
 
+function gitWithShell(){
+    opt={
+        secretId: "secret 2"
+    }
+    sh('cd /home/sagi/src/banai-ci/test-repos && git clone git@github.com:banai-ci/pub-repo.git')
+}
 
 function main() {
     // localScripts()
@@ -173,5 +179,6 @@ function main() {
     //causeException()
     //abort()
     //done()
+    gitWithShell()
 
 }
