@@ -160,52 +160,7 @@ function causeException() {
     throw "Testing exception from banai script"
 }
 
-function testGit() {
-    var optDirectSSH = {
-        "secretId": "",
-        "privateKeyPath": "/home/sagi/.ssh/id_rsa",
-        "user": "",
-        "password": ""
-    }
 
-    var optSecretSSH = {
-        "secretId": "secret 2",
-        "privateKeyPath": "",
-        "user": "",
-        "password": ""
-    }
-    
-    var repoFolder="/home/sagi/src/banai-ci/test-repos/pub-repo"
-    var gitURL="git@github.com:banai-ci/pub-repo.git"
-    
-    if (!fsHas(repoFolder)){
-        gitClone(gitURL,repoFolder)   //clone without auth
-        //gitClone(gitURL,targetFolder,optDirectSSH)      //clone with auth
-    }
-    
-   
-    // gitPull(targetFolder , optSecretSSH)
-    // var branches=gitBranches(repoFolder)
-    // println("Repo branches",JSON.stringify(branches))
-
-
-    // var tags=gitTags(repoFolder )
-    // println("Repo tags",JSON.stringify(tags))
-    
-    // var branch="aslr"
-    // var tag="version1.1.3"
-    // var ref=gitCheckout(targetFolder,branch) 
-    // println("Reference of checkout ",branch," ",JSON.stringify(ref))
-
-    // ref=gitCheckout(targetFolder,tag) 
-    // println("Reference of checkout ",tag," ",JSON.stringify(ref))
-
-    
-    
-    
-
-
-}
 
 function main() {
     // localScripts()
@@ -215,7 +170,6 @@ function main() {
     // hashExample()
     // testREST()
     testSecrets()
-    testGit()
     //causeException()
     //abort()
     //done()

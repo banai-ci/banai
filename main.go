@@ -8,7 +8,6 @@ import (
 
 	"github.com/banai-ci/banai/commands/archive"
 	"github.com/banai-ci/banai/commands/fs"
-	"github.com/banai-ci/banai/commands/gitclient"
 	hashImpl "github.com/banai-ci/banai/commands/hash"
 	"github.com/banai-ci/banai/commands/httpclient"
 	secret "github.com/banai-ci/banai/commands/secrets"
@@ -95,7 +94,6 @@ func runBuild(scriptFileName string, params infra.BanaiParams, funcCalls []strin
 		hashImpl.RegisterJSObjects(b)
 		httpclient.RegisterJSObjects(b)
 		secret.RegisterJSObjects(b)
-		gitclient.RegisterJSObjects(b)
 
 		_, err = b.Jse.RunProgram(program)
 
